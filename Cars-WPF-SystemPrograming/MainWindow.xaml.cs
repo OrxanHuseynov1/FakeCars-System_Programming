@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using Bogus;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
@@ -47,35 +48,79 @@ public partial class MainWindow : Window
 
     private void Button_Click(object sender, RoutedEventArgs e)
     {
+        Stopwatch stopwatch = new Stopwatch();
+        CarsList.Items.Clear();
+        stopwatch.Restart();
+
         if(IsSingle.IsChecked == true)
         {
+            singleMethod(stopwatch);
+        }
+        else
+        {
+            multiMethod(stopwatch);
+        }
+    }
 
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start(); 
-            Thread thread = new Thread(() =>
+
+
+
+    private void singleMethod(Stopwatch stopwatch)
+    {
+        stopwatch.Start();
+        Thread thread = new Thread(() =>
+        {
+            lock (_sync)
             {
-                lock (_sync)
+                List<Car> Cars = [];
+
+                foreach (var file in fileNames)
                 {
-                    List<Car> Cars = [];
+                    string fileRead = File.ReadAllText(file + ".json");
+                    Cars = JsonSerializer.Deserialize<List<Car>>(fileRead) ?? new()!;
 
-                    foreach (var file in fileNames)
-                    {
-                        string fileRead = File.ReadAllText(file + ".json");
-                        Cars = JsonSerializer.Deserialize<List<Car>>(fileRead) ?? new()!;
-
-                        foreach (var car in Cars)
-                            Dispatcher.Invoke(() => ListView.Items.Add(car));
-                    }
-
-                    stopwatch.Stop();
-                    double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
-                    Dispatcher.Invoke(() => Time.Text = elapsedSeconds.ToString());
+                    foreach (var car in Cars)
+                        Dispatcher.Invoke(() => CarsList.Items.Add(car));
                 }
 
+                stopwatch.Stop();
+                double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+                Dispatcher.Invoke(() => Time.Text = elapsedSeconds.ToString());
+            }
 
-            });
-            thread.Start();
-            
-        }
+
+        });
+        thread.Start();
+    }
+
+
+
+    private void multiMethod(Stopwatch stopwatch)
+    {
+        stopwatch.Start();
+
+
+
+
+        
+        //for (int i = 0; i < fileNames.Count - 1; i++)
+        //{
+        //    ThreadPool.QueueUserWorkItem((e) => 
+        //    {
+        //        List<Car> Cars = [];
+
+        //        string fileRead = File.ReadAllText(fileNames[i] + ".json");
+        //        Cars = JsonSerializer.Deserialize<List<Car>>(fileRead) ?? new()!;
+
+        //        foreach (var car in Cars)
+        //            Dispatcher.Invoke(() => CarsList.Items.Add(car));
+
+        //    });
+        //    stopwatch.Stop();
+        //    double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+        //    Dispatcher.Invoke(() => Time.Text = elapsedSeconds.ToString());
+        //}
+
+
     }
 }
