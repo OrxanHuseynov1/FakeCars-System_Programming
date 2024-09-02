@@ -11,18 +11,13 @@ public partial class MainWindow : Window
 {
     private static object _sync = new object();
     private static List<string> fileNames = ["Mercedes","Bmw", "Toyota", "Kia", "Ford"];
+    CancellationTokenSource cts;
+
     public MainWindow()
     {
         InitializeComponent();
 
-        var brandsAndFiles = new Dictionary<string, string>
-        {
-            //{ "Mercedes",fileNames[0] },
-            //{"BMW",fileNames[1]},
-            //{"Toyota","toyota.json" },
-            //{"Kia","kia.json" },
-            //{"Ford","ford.json" }
-        };
+        var brandsAndFiles = new Dictionary<string, string> {};
 
         foreach (var file in fileNames)
             brandsAndFiles.Add(file, $"{file}.json");
@@ -97,30 +92,35 @@ public partial class MainWindow : Window
 
     private void multiMethod(Stopwatch stopwatch)
     {
-        stopwatch.Start();
+        DirectoryInfo directoryInfo = new DirectoryInfo(Directory.GetParent(Environment.CurrentDirectory)!.Parent!.FullName + @"\Json");
 
+        foreach (var item in fileNames)
+        {
+            ThreadPool.QueueUserWorkItem((o) => {
 
+                cts = new CancellationTokenSource();
+                stopwatch.Start();
+                var filedirectory = Directory.GetParent(Environment.CurrentDirectory)!.Parent!.FullName + @"\Json\";
 
+                var car = File.ReadAllText(item + ".json");
+                ObservableCollection<Car> tempCars = JsonSerializer.Deserialize<ObservableCollection<Car>>(car)!;
 
-        
-        //for (int i = 0; i < fileNames.Count - 1; i++)
-        //{
-        //    ThreadPool.QueueUserWorkItem((e) => 
-        //    {
-        //        List<Car> Cars = [];
+                for (int i = 0; i < tempCars.Count; i++)
+                {
+                    if (cts.Token.IsCancellationRequested) break;
+                    Thread.Sleep(800);
 
-        //        string fileRead = File.ReadAllText(fileNames[i] + ".json");
-        //        Cars = JsonSerializer.Deserialize<List<Car>>(fileRead) ?? new()!;
+                    stopwatch.Stop();
+                    Dispatcher.Invoke(new Action(() =>
+                    {
+                        Time.Text = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+                        CarsList.Items.Add(tempCars[i]);
+                    }));
+                }
 
-        //        foreach (var car in Cars)
-        //            Dispatcher.Invoke(() => CarsList.Items.Add(car));
-
-        //    });
-        //    stopwatch.Stop();
-        //    double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
-        //    Dispatcher.Invoke(() => Time.Text = elapsedSeconds.ToString());
-        //}
-
+            });
+        }
 
     }
+
 }
